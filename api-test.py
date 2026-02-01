@@ -21,7 +21,6 @@ import json
 import os
 import sys
 import requests
-from typing import Optional
 
 
 def get_api_key() -> str:
@@ -58,7 +57,7 @@ def make_request(
     url: str,
     api_key: str,
     payload: dict,
-    headers_override: Optional[dict] = None,
+    headers_override: dict | None = None,
     verbose: bool = False,
 ) -> requests.Response:
     """Make a POST request to the API endpoint."""
