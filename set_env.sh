@@ -4,7 +4,8 @@
 # Then run the test
 # python3 api-test.py --env test
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_DIR="$(dirname "$(realpath -- "${BASH_SOURCE[0]}")")"
 SECRETS_FILE="$SCRIPT_DIR/.secrets"
 
 if [ ! -f "$SECRETS_FILE" ]; then
