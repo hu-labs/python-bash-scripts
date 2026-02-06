@@ -376,34 +376,36 @@ def test_cors_preflight(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+# Single source of truth for test functions: { "cli-key": (function_ref, "Display Name") }
+TEST_MAP = {
+    "success": (test_success_request, "Success Request"),
+    "missing-body": (test_missing_body, "Missing Body"),
+    "invalid-json": (test_invalid_json, "Invalid JSON"),
+    "missing-threadid": (test_missing_thread_id, "Missing threadId"),
+    "messages-not-array": (test_messages_not_array, "Messages Not Array"),
+    "empty-messages": (test_empty_messages, "Empty Messages"),
+    "missing-key": (test_missing_api_key, "Missing API Key"),
+    "invalid-key": (test_invalid_api_key, "Invalid API Key"),
+    "cors": (test_cors_preflight, "CORS Preflight"),
+}
+
+
 def run_all_tests(url: str, api_key: str, verbose: bool = False) -> dict:
     """Run all tests and return summary."""
-    tests = [
-        ("Success Request", test_success_request),
-        ("Missing Body", test_missing_body),
-        ("Invalid JSON", test_invalid_json),
-        ("Missing threadId", test_missing_thread_id),
-        ("Messages Not Array", test_messages_not_array),
-        ("Empty Messages", test_empty_messages),
-        ("Missing API Key", test_missing_api_key),
-        ("Invalid API Key", test_invalid_api_key),
-        ("CORS Preflight", test_cors_preflight),
-    ]
-
     results = {"passed": 0, "failed": 0, "details": []}
 
-    for name, test_func in tests:
+    for name, (test_func, display_name) in TEST_MAP.items():
         try:
             passed = test_func(url, api_key, verbose)
             if passed:
                 results["passed"] += 1
             else:
                 results["failed"] += 1
-            results["details"].append((name, passed))
+            results["details"].append((display_name, passed))
         except Exception as e:
-            print_result(name, False, f"Unexpected error: {e}")
+            print_result(display_name, False, f"Unexpected error: {e}")
             results["failed"] += 1
-            results["details"].append((name, False))
+            results["details"].append((display_name, False))
 
     return results
 
@@ -433,8 +435,7 @@ Examples:
     )
     parser.add_argument(
         "--test", "-t",
-        choices=["all", "success", "missing-body", "invalid-json", "missing-threadid",
-                 "messages-not-array", "empty-messages", "missing-key", "invalid-key", "cors"],
+        choices=["all"] + list(TEST_MAP.keys()), # Build a list of allowed function names after '--test'
         default="all",
         help="Specific test to run (default: all)",
     )
@@ -457,19 +458,14 @@ def main():
     print(f"URL: {url}")
     print(f"{'='*60}")
 
-    # Run tests
-    test_map = {
-        "success": test_success_request,
-        "missing-body": test_missing_body,
-        "invalid-json": test_invalid_json,
-        "missing-threadid": test_missing_thread_id,
-        "messages-not-array": test_messages_not_array,
-        "empty-messages": test_empty_messages,
-        "missing-key": test_missing_api_key,
-        "invalid-key": test_invalid_api_key,
-        "cors": test_cors_preflight,
-    }
+    # Quick connectivity test to the URL
+    try:
+        requests.head(url, timeout=5)
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error: Cannot reach URL {url} - {e}")
+        sys.exit(1)
 
+    # Run tests
     if args.test == "all":
         results = run_all_tests(url, api_key, args.verbose)
 
@@ -492,7 +488,7 @@ def main():
             sys.exit(0)
     else:
         # Run single test
-        test_func = test_map[args.test]
+        test_func, _ = TEST_MAP[args.test]
         passed = test_func(url, api_key, args.verbose)
         sys.exit(0 if passed else 1)
 
