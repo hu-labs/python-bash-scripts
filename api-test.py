@@ -23,6 +23,15 @@ import sys
 import requests
 
 
+# The listing for test functions, filled by register_cli_name factory.
+TEST_FUNCS = {}
+def register_cli_name(cli_name: str, display_name: str):
+    def decorator(func):
+        TEST_FUNCS[cli_name] = (func, display_name)
+        return func
+    return decorator
+
+
 def get_api_key() -> str:
     """Retrieve API key from environment variable."""
     api_key = os.environ.get("API_KEY")
@@ -85,6 +94,7 @@ def print_result(test_name: str, passed: bool, details: str = ""):
         print(f"       {details}")
 
 
+@register_cli_name("success", "Success Request")
 def test_success_request(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test a valid request that should succeed."""
     print("\n--- Test: Valid Request (Success) ---")
@@ -123,6 +133,7 @@ def test_success_request(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("missing-body", "Missing Body")
 def test_missing_body(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with missing body (should return 400)."""
     print("\n--- Test: Missing Request Body ---")
@@ -156,6 +167,7 @@ def test_missing_body(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("invalid-json", "Invalid JSON")
 def test_invalid_json(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with invalid JSON payload (should return 400)."""
     print("\n--- Test: Invalid JSON Payload ---")
@@ -189,6 +201,7 @@ def test_invalid_json(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("missing-threadid", "Missing threadId")
 def test_missing_thread_id(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with missing threadId (should return 400)."""
     print("\n--- Test: Missing threadId ---")
@@ -220,6 +233,7 @@ def test_missing_thread_id(url: str, api_key: str, verbose: bool = False) -> boo
         return False
 
 
+@register_cli_name("messages-not-array", "Messages Not Array")
 def test_messages_not_array(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with messages as non-array (should return 400)."""
     print("\n--- Test: Messages Not Array ---")
@@ -252,6 +266,7 @@ def test_messages_not_array(url: str, api_key: str, verbose: bool = False) -> bo
         return False
 
 
+@register_cli_name("empty-messages", "Empty Messages")
 def test_empty_messages(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with empty messages array (should return 400)."""
     print("\n--- Test: Empty Messages Array ---")
@@ -284,6 +299,7 @@ def test_empty_messages(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("missing-key", "Missing API Key")
 def test_missing_api_key(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request without API key (should return 403)."""
     print("\n--- Test: Missing API Key ---")
@@ -315,6 +331,7 @@ def test_missing_api_key(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("invalid-key", "Invalid API Key")
 def test_invalid_api_key(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test request with invalid API key (should return 403)."""
     print("\n--- Test: Invalid API Key ---")
@@ -342,6 +359,7 @@ def test_invalid_api_key(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
+@register_cli_name("cors", "CORS Preflight")
 def test_cors_preflight(url: str, api_key: str, verbose: bool = False) -> bool:
     """Test CORS preflight OPTIONS request."""
     print("\n--- Test: CORS Preflight (OPTIONS) ---")
@@ -376,7 +394,8 @@ def test_cors_preflight(url: str, api_key: str, verbose: bool = False) -> bool:
         return False
 
 
-# Single source of truth for test functions: { "cli-key": (function_ref, "Display Name") }
+
+"""
 TEST_MAP = {
     "success": (test_success_request, "Success Request"),
     "missing-body": (test_missing_body, "Missing Body"),
@@ -387,14 +406,14 @@ TEST_MAP = {
     "missing-key": (test_missing_api_key, "Missing API Key"),
     "invalid-key": (test_invalid_api_key, "Invalid API Key"),
     "cors": (test_cors_preflight, "CORS Preflight"),
-}
+}"""
 
 
 def run_all_tests(url: str, api_key: str, verbose: bool = False) -> dict:
     """Run all tests and return summary."""
     results = {"passed": 0, "failed": 0, "details": []}
 
-    for name, (test_func, display_name) in TEST_MAP.items():
+    for name, (test_func, display_name) in TEST_FUNCS.items():
         try:
             passed = test_func(url, api_key, verbose)
             if passed:
@@ -435,7 +454,7 @@ Examples:
     )
     parser.add_argument(
         "--test", "-t",
-        choices=["all"] + list(TEST_MAP.keys()), # Build a list of allowed function names after '--test'
+        choices=["all"] + list(TEST_FUNCS.keys()), # Build a list of allowed function names after '--test'
         default="all",
         help="Specific test to run (default: all)",
     )
@@ -488,7 +507,7 @@ def main():
             sys.exit(0)
     else:
         # Run single test
-        test_func, _ = TEST_MAP[args.test]
+        test_func, _ = TEST_FUNCS[args.test]
         passed = test_func(url, api_key, args.verbose)
         sys.exit(0 if passed else 1)
 
